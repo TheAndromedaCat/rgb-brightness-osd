@@ -1,9 +1,9 @@
 # RGB Brightness OSD
 
-A lightweight Windows system tray utility that displays a floating brightness meter popup when you press your RGB brightness keys (default `F21` for up, `F20` for down). Built to pair with apps like **SignalRGB** without blocking or consuming the keypress.
+A lightweight Windows system tray utility that displays a floating brightness meter popup when you press your RGB brightness keys (default `F21` for up, `F20` for down). Designed for use with any keyboard that has a customizable button, roller, or dial layout (e.g., Razer keyboards with Synapse) paired with any RGB software that supports global brightness up/down hotkeys (e.g., SignalRGB), without blocking or consuming the keypress.
 
 ## Features
-- **Non-blocking global key hook:** Listens for `F21` / `F20` (or custom keys) while passing them through to SignalRGB or other software.
+- **Non-blocking global key hook:** Listens for `F21` / `F20` (or custom keys) while passing them through to your RGB software.
 - **Auto-syncs with Windows theme:** Matches your Windows Dark/Light mode, accent color, and taskbar color setting (`ColorPrevalence`).
 - **Click-through & non-focus-stealing:** Floats above the taskbar and fades out automatically without interrupting games or active windows.
 - **Customizable from the system tray:**
