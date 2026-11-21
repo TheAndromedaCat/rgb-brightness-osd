@@ -181,16 +181,22 @@ namespace RgbBrightnessOSD
         {
             bool useLight = ReadRegDword(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "SystemUsesLightTheme", 0) == 1;
             bool colorPrevalence = ReadRegDword(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "ColorPrevalence", 0) == 1;
-            System.Windows.Media.Color accent = GetWindowsAccentColor();
+
+            System.Windows.Media.Color[] palette = ReadAccentPalette();
+            System.Windows.Media.Color accentLight3 = palette != null ? palette[0] : Blend(GetWindowsAccentColor(), System.Windows.Media.Colors.White, 0.72);
+            System.Windows.Media.Color accentLight2 = palette != null ? palette[1] : Blend(GetWindowsAccentColor(), System.Windows.Media.Colors.White, 0.50);
+            System.Windows.Media.Color accent = palette != null ? palette[3] : GetWindowsAccentColor();
+            System.Windows.Media.Color accentDark1 = palette != null ? palette[4] : Blend(accent, System.Windows.Media.Colors.Black, 0.18);
+            System.Windows.Media.Color accentDark2 = palette != null ? palette[5] : Blend(accent, System.Windows.Media.Colors.Black, 0.35);
 
             if (colorPrevalence)
             {
-                // Tint the card with the Windows accent color (similar to Windows taskbar/flyout)
+                // Match Windows Start/Taskbar/Flyout color (AccentDark2 in dark mode, Accent in light mode)
                 System.Windows.Media.Color bgBase = useLight
-                    ? Blend(accent, System.Windows.Media.Colors.White, 0.15)
-                    : Blend(accent, System.Windows.Media.Color.FromRgb(16, 12, 24), 0.25);
-
+                    ? accent
+                    : Blend(accentDark2, System.Windows.Media.Color.FromRgb(48, 48, 52), 0.08);
                 bool bgIsLight = GetLuminance(bgBase) > 0.58;
+
                 System.Windows.Media.Color fg = bgIsLight
                     ? System.Windows.Media.Color.FromRgb(24, 24, 28)
                     : System.Windows.Media.Colors.White;
@@ -199,17 +205,15 @@ namespace RgbBrightnessOSD
                     ? System.Windows.Media.Color.FromArgb(55, 0, 0, 0)
                     : System.Windows.Media.Color.FromArgb(75, 255, 255, 255);
 
-                System.Windows.Media.Color fill = bgIsLight
-                    ? Blend(accent, System.Windows.Media.Colors.Black, 0.35)
-                    : Blend(accent, System.Windows.Media.Colors.White, 0.55);
+                System.Windows.Media.Color fill = bgIsLight ? accentDark2 : accentLight2;
 
                 System.Windows.Media.Color border = bgIsLight
-                    ? System.Windows.Media.Color.FromArgb(45, 0, 0, 0)
-                    : System.Windows.Media.Color.FromArgb(65, 255, 255, 255);
+                    ? System.Windows.Media.Color.FromArgb(40, 0, 0, 0)
+                    : System.Windows.Media.Color.FromArgb(45, 255, 255, 255);
 
                 return new ThemePalette
                 {
-                    CardBackground = System.Windows.Media.Color.FromArgb(252, bgBase.R, bgBase.G, bgBase.B),
+                    CardBackground = System.Windows.Media.Color.FromArgb(255, bgBase.R, bgBase.G, bgBase.B),
                     CardBorder = border,
                     Foreground = fg,
                     TrackBackground = track,
@@ -222,7 +226,7 @@ namespace RgbBrightnessOSD
             {
                 return new ThemePalette
                 {
-                    CardBackground = System.Windows.Media.Color.FromArgb(252, 245, 245, 248),
+                    CardBackground = System.Windows.Media.Color.FromArgb(255, 245, 245, 248),
                     CardBorder = System.Windows.Media.Color.FromArgb(40, 0, 0, 0),
                     Foreground = System.Windows.Media.Color.FromRgb(26, 26, 30),
                     TrackBackground = System.Windows.Media.Color.FromArgb(45, 0, 0, 0),
@@ -232,19 +236,43 @@ namespace RgbBrightnessOSD
             }
 
             // Dark mode without ColorPrevalence
-            System.Windows.Media.Color darkFill = GetLuminance(accent) < 0.25
-                ? Blend(accent, System.Windows.Media.Colors.White, 0.40)
-                : accent;
+            System.Windows.Media.Color darkFill = GetLuminance(accent) < 0.25 ? accentLight2 : accent;
 
             return new ThemePalette
             {
-                CardBackground = System.Windows.Media.Color.FromArgb(252, 32, 32, 36),
+                CardBackground = System.Windows.Media.Color.FromArgb(255, 32, 32, 36),
                 CardBorder = System.Windows.Media.Color.FromArgb(55, 255, 255, 255),
                 Foreground = System.Windows.Media.Colors.White,
                 TrackBackground = System.Windows.Media.Color.FromArgb(70, 255, 255, 255),
                 FillBar = darkFill,
                 TrayIconColor = System.Drawing.Color.FromArgb(darkFill.R, darkFill.G, darkFill.B)
             };
+        }
+
+        private static System.Windows.Media.Color[] ReadAccentPalette()
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent", false))
+                {
+                    if (key == null) return null;
+                    byte[] raw = key.GetValue("AccentPalette") as byte[];
+                    if (raw == null || raw.Length < 28) return null;
+
+                    var colors = new System.Windows.Media.Color[8];
+                    int count = Math.Min(8, raw.Length / 4);
+                    for (int i = 0; i < count; i++)
+                    {
+                        int offset = i * 4;
+                        colors[i] = System.Windows.Media.Color.FromRgb(raw[offset], raw[offset + 1], raw[offset + 2]);
+                    }
+                    return colors;
+                }
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static System.Windows.Media.Color GetWindowsAccentColor()
